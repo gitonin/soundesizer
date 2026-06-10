@@ -3,26 +3,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0f1020" />
-  <title>soundesizer</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="theme-color" content="#1a1320" />
+  <title>Pixel Espresso</title>
+  <link rel="stylesheet" href="game.css" />
 </head>
 <body>
-  <header class="topbar">
-    <h1 class="logo">soundesizer</h1>
-    <p class="hint">Touche une forme pour jouer · glisse pour changer d'écran</p>
-  </header>
+  <div class="frame">
+    <header class="hud">
+      <h1 class="title">PIXEL&nbsp;ESPRESSO</h1>
+      <ol class="steps" id="steps">
+        <li data-step="grind">Moudre</li>
+        <li data-step="tamp">Tasser</li>
+        <li data-step="place">Placer</li>
+        <li data-step="brew">Extraire</li>
+        <li data-step="score">Note</li>
+      </ol>
+    </header>
 
-  <main class="stage">
-    <!-- Les écrans (slides) sont générés par app.js -->
-    <div class="viewport">
-      <div class="track" id="track"></div>
+    <div class="screen">
+      <canvas id="game" width="192" height="256"></canvas>
     </div>
 
-    <!-- Indicateurs de swipe (dots) -->
-    <div class="dots" id="dots"></div>
-  </main>
+    <footer class="panel">
+      <p class="instruction" id="instruction">Prépare le meilleur espresso, étape par étape.</p>
+      <div class="controls" id="controls"></div>
+    </footer>
+  </div>
 
-  <script src="app.js"></script>
+  <script src="game.js"></script>
 </body>
 </html>

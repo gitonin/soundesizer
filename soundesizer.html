@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f1020" />
+  <title>soundesizer</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1 class="logo">soundesizer</h1>
+    <p class="hint">Touche une forme pour jouer · glisse pour changer d'écran</p>
+  </header>
+
+  <main class="stage">
+    <!-- Les écrans (slides) sont générés par app.js -->
+    <div class="viewport">
+      <div class="track" id="track"></div>
+    </div>
+
+    <!-- Indicateurs de swipe (dots) -->
+    <div class="dots" id="dots"></div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
