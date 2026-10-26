@@ -8,20 +8,37 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- Barre de transport : play, BPM, 4/8 temps, clear -->
   <header class="topbar">
-    <h1 class="logo">soundesizer</h1>
-    <p class="hint">Touche une forme pour jouer · glisse pour changer d'écran</p>
+    <div class="brand">soundesizer</div>
+    <div class="transport">
+      <button id="playBtn" class="t-btn play" aria-label="lecture / pause">▶</button>
+      <div class="bpm">
+        <button class="t-btn small" data-bpm="-5" aria-label="moins vite">−</button>
+        <span class="bpm-read"><b id="bpmVal">110</b><i>BPM</i></span>
+        <button class="t-btn small" data-bpm="5" aria-label="plus vite">+</button>
+      </div>
+      <div class="beats">
+        <button class="t-btn beat-opt" data-beats="4">4</button>
+        <button class="t-btn beat-opt sel" data-beats="8">8</button>
+      </div>
+      <button id="clearBtn" class="t-btn clear" aria-label="tout arrêter">⟲</button>
+    </div>
   </header>
 
+  <!-- Écrans de pads (générés par app.js) -->
   <main class="stage">
-    <!-- Les écrans (slides) sont générés par app.js -->
     <div class="viewport">
       <div class="track" id="track"></div>
     </div>
-
-    <!-- Indicateurs de swipe (dots) -->
+    <div class="panel-label" id="panelLabel"></div>
     <div class="dots" id="dots"></div>
   </main>
+
+  <!-- Visualisation du séquenceur -->
+  <footer class="sequencer">
+    <div class="seq-bar" id="seqBar"></div>
+  </footer>
 
   <script src="app.js"></script>
 </body>

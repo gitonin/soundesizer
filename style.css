@@ -2,79 +2,97 @@
   --bg: #0f1020;
   --bg-2: #16172e;
   --fg: #f4f4ff;
-  --muted: #8b8bca;
-  --dot: #4a4b6b;
+  --dot: #44466b;
   --dot-active: #ffffff;
+  --panel: rgba(255, 255, 255, 0.035);
+  --panel-bd: rgba(255, 255, 255, 0.07);
 }
 
-* {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow: hidden;
-}
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: radial-gradient(circle at 50% 0%, var(--bg-2), var(--bg) 70%);
+  background: radial-gradient(circle at 50% -10%, var(--bg-2), var(--bg) 70%);
   color: var(--fg);
   display: flex;
   flex-direction: column;
   height: 100dvh;
   user-select: none;
   -webkit-user-select: none;
+  overscroll-behavior: none;
 }
 
-/* ---------- Top bar ---------- */
+/* ---------------- Transport ---------------- */
 .topbar {
-  text-align: center;
-  padding: 18px 16px 6px;
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid var(--panel-bd);
 }
 
-.logo {
-  margin: 0;
-  font-size: clamp(26px, 7vw, 40px);
+.brand {
+  font-size: clamp(13px, 4vw, 18px);
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0;
   background: linear-gradient(90deg, #7c5cff, #4ad7d1, #ff5c8a);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-}
-
-.hint {
-  margin: 6px 0 0;
-  font-size: 13px;
-  color: #9a9bc0;
-}
-
-/* ---------- Stage / slides ---------- */
-.stage {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.viewport {
-  flex: 1 1 auto;
+  white-space: nowrap;
   overflow: hidden;
-  position: relative;
-  min-height: 0;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.track {
-  display: flex;
-  height: 100%;
-  width: 100%;
-  will-change: transform;
+.transport { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+
+.t-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid var(--panel-bd);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.08s, box-shadow 0.15s;
 }
+.t-btn:active { transform: scale(0.92); }
+.t-btn.small { min-width: 28px; height: 28px; font-size: 18px; padding: 0; }
+
+.play.playing {
+  background: linear-gradient(135deg, #7c5cff, #4ad7d1);
+  border-color: transparent;
+  box-shadow: 0 0 16px rgba(124, 92, 255, 0.6);
+}
+
+.bpm { display: flex; align-items: center; gap: 3px; }
+.bpm-read { display: flex; flex-direction: column; align-items: center; line-height: 1; min-width: 34px; }
+.bpm-read b { font-size: 15px; }
+.bpm-read i { font-size: 8px; font-style: normal; letter-spacing: 1px; color: #9a9bc0; }
+
+.beats { display: flex; gap: 3px; background: rgba(0,0,0,0.25); padding: 3px; border-radius: 11px; }
+.beat-opt { min-width: 27px; height: 26px; border: none; background: transparent; }
+.beat-opt.sel { background: rgba(255,255,255,0.14); box-shadow: inset 0 0 0 1px var(--panel-bd); }
+
+/* ---------------- Stage / écrans ---------------- */
+.stage { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+
+.viewport { flex: 1 1 auto; overflow: hidden; position: relative; min-height: 0; }
+
+.track { display: flex; height: 100%; width: 100%; will-change: transform; }
 
 .slide {
   flex: 0 0 100%;
@@ -83,72 +101,133 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 10px 18px;
+  padding: 8px 16px;
 }
 
-/* Grille de 8 formes : 2 colonnes x 4 lignes */
+/* Grille de 8 pads : 4 colonnes x 2 lignes (format plus bas qu'avant) */
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  grid-template-rows: repeat(4, 1fr);
-  gap: clamp(10px, 3vw, 22px);
+  grid-template-columns: repeat(4, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: clamp(8px, 2.2vw, 16px);
   width: 100%;
-  max-width: 460px;
+  max-width: 720px;
   height: 100%;
-  max-height: 640px;
+  max-height: 340px;
 }
 
 .cell {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  background: var(--panel);
+  border: 1px solid var(--panel-bd);
   cursor: pointer;
-  transition: transform 0.08s ease, background 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden;
+  transition: background 0.2s, box-shadow 0.25s, border-color 0.25s;
 }
 
 .cell svg {
-  width: 64%;
-  height: 64%;
+  width: 58%;
+  height: 58%;
   pointer-events: none;
-  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
+  transition: transform 0.2s ease;
 }
 
-.cell.pulse {
-  animation: pulse 0.45s ease-out;
+/* Pad actif : halo coloré + anneau qui pulse */
+.cell.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glow, #7c5cff);
+  box-shadow: 0 0 0 1px var(--glow, #7c5cff), 0 0 22px -2px var(--glow, #7c5cff);
+}
+.cell.active svg { transform: scale(1.06); }
+.cell.active::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid var(--glow, #7c5cff);
+  opacity: 0;
+  animation: ring 1.2s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes ring {
+  0%   { opacity: 0.7; transform: scale(0.85); }
+  100% { opacity: 0;   transform: scale(1.15); }
 }
 
-@keyframes pulse {
-  0%   { transform: scale(1); }
-  30%  { transform: scale(1.16); }
-  100% { transform: scale(1); }
+/* Ondulation au tap */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--glow, #fff);
+  opacity: 0.45;
+  transform: scale(0);
+  pointer-events: none;
+  mix-blend-mode: screen;
 }
 
-/* ---------- Dots ---------- */
-.dots {
+/* ---------------- Label + dots ---------------- */
+.panel-label {
   flex: 0 0 auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 0 24px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #9a9bc0;
+  padding: 4px 0 2px;
+  font-weight: 700;
 }
+
+.dots { flex: 0 0 auto; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 6px 0 10px; }
 
 .dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--dot);
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: transform 0.25s ease, background 0.25s ease, width 0.25s ease;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--dot); border: none; padding: 0; cursor: pointer;
+  transition: transform 0.25s, background 0.25s, width 0.25s, box-shadow 0.25s;
+}
+.dot.active { background: var(--dot-active); width: 22px; border-radius: 5px; }
+.dot.has-active { box-shadow: 0 0 10px 1px var(--dot-glow, #7c5cff); background: var(--dot-glow, #7c5cff); }
+.dot.active.has-active { background: #fff; }
+
+/* ---------------- Séquenceur ---------------- */
+.sequencer {
+  flex: 0 0 auto;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: rgba(0, 0, 0, 0.3);
+  border-top: 1px solid var(--panel-bd);
 }
 
-.dot.active {
-  background: var(--dot-active);
-  width: 24px;
-  border-radius: 6px;
+.seq-bar { display: flex; gap: 6px; width: 100%; max-width: 720px; margin: 0 auto; }
+
+.step {
+  position: relative;
+  flex: 1 1 0;
+  height: 46px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--panel-bd);
+  overflow: hidden;
+  transition: background 0.1s, box-shadow 0.1s;
+}
+.step::before {
+  content: "";
+  position: absolute;
+  left: 6px; right: 6px; bottom: 6px;
+  height: 4px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+/* tête de lecture */
+.step.play {
+  background: linear-gradient(180deg, rgba(124,92,255,0.35), rgba(74,215,209,0.18));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3), 0 0 18px -2px #7c5cff;
+}
+.step.play::before { background: #fff; box-shadow: 0 0 10px #fff; }
+
+@media (max-width: 420px) {
+  .grid { max-height: 300px; }
+  .step { height: 40px; }
 }
