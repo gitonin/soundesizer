@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#0f1020" />
   <title>soundesizer</title>
-  <link rel="stylesheet" href="style.css?v=2" />
+  <link rel="stylesheet" href="style.css?v=3" />
 </head>
 <body>
-  <!-- Barre de transport : play, BPM, 4/8 temps, clear -->
+  <!-- Transport -->
   <header class="topbar">
     <div class="brand">soundesizer</div>
     <div class="transport">
       <button id="playBtn" class="t-btn play" aria-label="lecture / pause">▶</button>
       <div class="bpm">
         <button class="t-btn small" data-bpm="-5" aria-label="moins vite">−</button>
-        <span class="bpm-read"><b id="bpmVal">110</b><i>BPM</i></span>
+        <span class="bpm-read"><b id="bpmVal">120</b><i>BPM</i></span>
         <button class="t-btn small" data-bpm="5" aria-label="plus vite">+</button>
       </div>
       <div class="beats">
@@ -26,20 +26,27 @@
     </div>
   </header>
 
-  <!-- Écrans de pads (générés par app.js) -->
+  <!-- Scène 3D -->
   <main class="stage">
-    <div class="viewport">
-      <div class="track" id="track"></div>
-    </div>
+    <canvas id="scene"></canvas>
     <div class="panel-label" id="panelLabel"></div>
-    <div class="dots" id="dots"></div>
+    <div class="overlay">
+      <button class="nav" id="prev" aria-label="écran précédent">‹</button>
+      <div class="dots" id="dots"></div>
+      <button class="nav" id="next" aria-label="écran suivant">›</button>
+    </div>
+    <div class="hint-3d" id="hint3d">glisser = tourner · pincer / molette = zoom · taper un objet = boucle</div>
   </main>
 
-  <!-- Visualisation du séquenceur -->
+  <!-- Potards d'effets -->
+  <div class="fxrow" id="fxrow"></div>
+
+  <!-- Séquenceur -->
   <footer class="sequencer">
     <div class="seq-bar" id="seqBar"></div>
   </footer>
 
-  <script src="app.js?v=2"></script>
+  <script src="three.min.js?v=r128"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
