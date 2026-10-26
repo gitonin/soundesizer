@@ -1,193 +1,176 @@
 /* ============================================================
-   soundesizer — groovebox à boucles
-   - 7 panneaux de 8 pads, rangés par type de son
-   - tap = lance la boucle, re-tap = stop (toggle)
-   - transport global : BPM + 4/8 temps + séquenceur visuel
-   - navigation par swipe + dots
+   soundesizer — groovebox 3D
+   - 7 panneaux de 8 pads (objets 3D), tap = boucle en toggle
+   - sons techno / electro / house, mélodiques
+   - chaque boucle se cale au tempo sur son temps d'entrée (phase perso)
+   - potards : filtre / delay / reverb
+   - caméra orbitale (glisser), zoom (molette / pincer)
    ============================================================ */
 
-/* ---------------- Bibliothèque de formes (SVG, viewBox 0 0 100 100) ---------------- */
-const SHAPES = {
-  circle:    (c) => `<circle cx="50" cy="50" r="42" fill="${c}"/>`,
-  square:    (c) => `<rect x="12" y="12" width="76" height="76" rx="10" fill="${c}"/>`,
-  triangle:  (c) => `<polygon points="50,10 90,86 10,86" fill="${c}"/>`,
-  triDown:   (c) => `<polygon points="10,16 90,16 50,90" fill="${c}"/>`,
-  diamond:   (c) => `<polygon points="50,6 92,50 50,94 8,50" fill="${c}"/>`,
-  star5:     (c) => `<polygon points="50,5 61,38 96,38 68,59 79,92 50,71 21,92 32,59 4,38 39,38" fill="${c}"/>`,
-  star6:     (c) => `<polygon points="50,4 62,29 90,29 68,48 78,76 50,60 22,76 32,48 10,29 38,29" fill="${c}"/>`,
-  star8:     (c) => `<polygon points="50,4 58,30 80,20 70,42 96,50 70,58 80,80 58,70 50,96 42,70 20,80 30,58 4,50 30,42 20,20 42,30" fill="${c}"/>`,
-  hexagon:   (c) => `<polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="${c}"/>`,
-  hexFlat:   (c) => `<polygon points="28,14 72,14 94,50 72,86 28,86 6,50" fill="${c}"/>`,
-  pentagon:  (c) => `<polygon points="50,6 92,38 76,90 24,90 8,38" fill="${c}"/>`,
-  pentaDown: (c) => `<polygon points="50,94 8,62 24,10 76,10 92,62" fill="${c}"/>`,
-  octagon:   (c) => `<polygon points="32,8 68,8 92,32 92,68 68,92 32,92 8,68 8,32" fill="${c}"/>`,
-  heart:     (c) => `<path d="M50 86C20 64 10 46 10 32a20 20 0 0 1 40-6 20 20 0 0 1 40 6c0 14-10 32-40 54Z" fill="${c}"/>`,
-  cross:     (c) => `<path d="M38 8h24v30h30v24H62v30H38V62H8V38h30Z" fill="${c}"/>`,
-  plusRound: (c) => `<path d="M40 10h20a6 6 0 0 1 6 6v18h18a6 6 0 0 1 6 6v20a6 6 0 0 1-6 6H66v18a6 6 0 0 1-6 6H40a6 6 0 0 1-6-6V66H16a6 6 0 0 1-6-6V40a6 6 0 0 1 6-6h18V16a6 6 0 0 1 6-6Z" fill="${c}"/>`,
-  moon:      (c) => `<path d="M64 8a44 44 0 1 0 0 84A36 36 0 0 1 64 8Z" fill="${c}"/>`,
-  drop:      (c) => `<path d="M50 6C50 6 84 46 84 64a34 34 0 0 1-68 0C16 46 50 6 50 6Z" fill="${c}"/>`,
-  bolt:      (c) => `<polygon points="56,4 22,54 46,54 40,96 80,40 54,40" fill="${c}"/>`,
-  ring:      (c) => `<path d="M50 8a42 42 0 1 0 0 84 42 42 0 0 0 0-84Zm0 24a18 18 0 1 1 0 36 18 18 0 0 1 0-36Z" fill="${c}" fill-rule="evenodd"/>`,
-  flower:    (c) => `<g fill="${c}"><circle cx="50" cy="22" r="16"/><circle cx="50" cy="78" r="16"/><circle cx="22" cy="50" r="16"/><circle cx="78" cy="50" r="16"/><circle cx="50" cy="50" r="14"/></g>`,
-  cloud:     (c) => `<path d="M28 74a18 18 0 0 1-2-36 24 24 0 0 1 46-6 16 16 0 0 1 4 42Z" fill="${c}"/>`,
-  leaf:      (c) => `<path d="M14 86C14 40 50 10 86 14 90 50 60 86 14 86Z" fill="${c}"/>`,
-  blob:      (c) => `<path d="M70 16c14 8 22 26 16 42s-26 30-44 24S12 56 18 38 56 8 70 16Z" fill="${c}"/>`,
-  semicircle:(c) => `<path d="M8 60a42 42 0 0 1 84 0Z" fill="${c}"/>`,
-  trapezoid: (c) => `<polygon points="24,22 76,22 92,82 8,82" fill="${c}"/>`,
-  parallelo: (c) => `<polygon points="30,22 92,22 70,82 8,82" fill="${c}"/>`,
-  chevron:   (c) => `<polygon points="20,12 50,40 80,12 92,24 50,66 8,24" fill="${c}"/>`,
-  chevronDown:(c)=> `<polygon points="8,76 50,34 92,76 80,88 50,58 20,88" fill="${c}"/>`,
-  hourglass: (c) => `<polygon points="16,12 84,12 50,50 84,88 16,88 50,50" fill="${c}"/>`,
-  kite:      (c) => `<polygon points="50,6 84,40 50,94 16,40" fill="${c}"/>`,
-  pill:      (c) => `<rect x="10" y="30" width="80" height="40" rx="20" fill="${c}"/>`,
-  capsuleV:  (c) => `<rect x="32" y="10" width="36" height="80" rx="18" fill="${c}"/>`,
-  shield:    (c) => `<path d="M50 6 86 18v30c0 26-18 38-36 46C32 86 14 74 14 48V18Z" fill="${c}"/>`,
-  burst:     (c) => `<polygon points="50,2 58,30 80,12 70,38 98,42 72,52 88,76 60,66 56,96 44,68 18,84 30,56 4,52 30,40 18,16 44,30" fill="${c}"/>`,
-  arrow:     (c) => `<polygon points="50,6 90,46 66,46 66,94 34,94 34,46 10,46" fill="${c}"/>`,
-  arrowRight:(c) => `<polygon points="10,36 56,36 56,18 92,50 56,82 56,64 10,64" fill="${c}"/>`,
-  gem:       (c) => `<polygon points="30,10 70,10 92,38 50,92 8,38" fill="${c}"/>`,
-  crystal:   (c) => `<polygon points="50,6 78,34 62,94 38,94 22,34" fill="${c}"/>`,
-  spiralDot: (c) => `<g fill="${c}"><circle cx="50" cy="50" r="40" opacity="0.35"/><circle cx="50" cy="50" r="26" opacity="0.6"/><circle cx="50" cy="50" r="12"/></g>`,
-  sun:       (c) => `<g fill="${c}"><circle cx="50" cy="50" r="24"/><g stroke="${c}" stroke-width="7" stroke-linecap="round"><line x1="50" y1="6" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="94"/><line x1="6" y1="50" x2="20" y2="50"/><line x1="80" y1="50" x2="94" y2="50"/><line x1="19" y1="19" x2="29" y2="29"/><line x1="71" y1="71" x2="81" y2="81"/><line x1="81" y1="19" x2="71" y2="29"/><line x1="29" y1="71" x2="19" y2="81"/></g></g>`,
-  pinwheel:  (c) => `<g fill="${c}"><path d="M50 50 50 8a42 42 0 0 1 36 21Z"/><path d="M50 50 86 71a42 42 0 0 1-36 21Z"/><path d="M50 50 14 71a42 42 0 0 1 0-42Z"/></g>`,
-  lens:      (c) => `<path d="M8 50C30 16 70 16 92 50 70 84 30 84 8 50Z" fill="${c}"/>`,
-  zigzag:    (c) => `<polygon points="14,72 32,28 50,72 68,28 86,72 78,86 68,52 50,90 32,52 22,86" fill="${c}"/>`,
-  doubleTri: (c) => `<g fill="${c}"><polygon points="50,8 86,50 14,50"/><polygon points="50,92 86,50 14,50" opacity="0.55"/></g>`,
-  triPair:   (c) => `<g fill="${c}"><polygon points="28,14 50,52 6,52"/><polygon points="72,48 94,86 50,86"/></g>`,
-  bowtie:    (c) => `<polygon points="14,18 50,46 86,18 86,82 50,54 14,82" fill="${c}"/>`,
-  waveform:  (c) => `<g fill="${c}"><rect x="10" y="40" width="9" height="20" rx="3"/><rect x="25" y="26" width="9" height="48" rx="3"/><rect x="40" y="12" width="9" height="76" rx="3"/><rect x="55" y="30" width="9" height="40" rx="3"/><rect x="70" y="20" width="9" height="60" rx="3"/><rect x="85" y="44" width="5" height="12" rx="2.5"/></g>`,
-  spark4:    (c) => `<polygon points="50,6 60,40 94,50 60,60 50,94 40,60 6,50 40,40" fill="${c}"/>`,
-  eye:       (c) => `<g><path d="M8 50C28 22 72 22 92 50 72 78 28 78 8 50Z" fill="${c}"/><circle cx="50" cy="50" r="12" fill="#13142b"/></g>`,
-  squircle:  (c) => `<rect x="12" y="12" width="76" height="76" rx="30" fill="${c}"/>`,
-  target:    (c) => `<g fill="none" stroke="${c}" stroke-width="9"><circle cx="50" cy="50" r="38"/><circle cx="50" cy="50" r="20"/></g><circle cx="50" cy="50" r="6" fill="${c}"/>`,
-  atom:      (c) => `<g fill="none" stroke="${c}" stroke-width="7"><ellipse cx="50" cy="50" rx="42" ry="16"/><ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(60 50 50)"/><ellipse cx="50" cy="50" rx="42" ry="16" transform="rotate(120 50 50)"/></g><circle cx="50" cy="50" r="7" fill="${c}"/>`,
-  ribbon:    (c) => `<path d="M20 20h60l-15 30 15 30H20l15-30Z" fill="${c}"/>`,
-  waterdrops:(c) => `<g fill="${c}"><circle cx="34" cy="40" r="18"/><circle cx="66" cy="62" r="14"/></g>`,
-  quaver:    (c) => `<g fill="${c}"><circle cx="34" cy="74" r="14"/><rect x="44" y="16" width="8" height="58"/><path d="M52 16c18 4 24 16 20 32-2-12-10-16-20-18Z"/></g>`,
-};
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
 
-/* ---------------- Notes ---------------- */
-const N = { // fréquences (Hz)
-  A1: 55, B1: 61.74, C2: 65.41, D2: 73.42, E2: 82.41, G2: 98, A2: 110, B2: 123.47,
-  C3: 130.81, D3: 146.83, E3: 164.81, G3: 196, A3: 220, C4: 261.63, E4: 329.63, G4: 392,
-  C5: 523.25, D5: 587.33, E5: 659.25, G5: 783.99, A5: 880, B5: 987.77, C6: 1046.5,
-};
-
-/* ---------------- Les 7 panneaux ---------------- */
+/* ---------------- Panneaux ---------------- */
+// geo : primitive 3D ; les sons sont en La mineur pour rester mélodiques.
 const PANELS = [
   {
-    name: "Pop", glow: "#ff8ad4",
+    name: "Keys", glow: "#ff8ad4",
     palette: ["#ff8ad4","#c58cff","#8c9cff","#6ce0e0","#7ce0a8","#ffd58a","#ff9fb0","#b0a0ff"],
     pads: [
-      { kind:"drone", shape:"circle",     freqs:[N.C3,N.E3,N.G3] },
-      { kind:"drone", shape:"blob",       freqs:[N.A2,N.C4,N.E4] },
-      { kind:"drone", shape:"cloud",      freqs:[N.D3,N.G3,N.A3] },
-      { kind:"drone", shape:"flower",     freqs:[N.E3,N.G3,N.B5/4] },
-      { kind:"drone", shape:"squircle",   freqs:[N.G2,N.D3,N.G3] },
-      { kind:"drone", shape:"semicircle", freqs:[N.C4,N.E4,N.G4] },
-      { kind:"drone", shape:"waterdrops", freqs:[N.A3,N.C4,N.E4] },
-      { kind:"drone", shape:"lens",       freqs:[N.C3,N.G3,N.C4] },
+      { kind:"keys", geo:"sphere",  chord:[57,60,64,69] },
+      { kind:"keys", geo:"icosa",   chord:[53,57,60,65] },
+      { kind:"keys", geo:"dodeca",  chord:[48,55,60,64] },
+      { kind:"keys", geo:"torus",   chord:[55,59,62,67] },
+      { kind:"keys", geo:"octa",    chord:[50,57,62,65] },
+      { kind:"keys", geo:"cyl",     chord:[52,59,64,67] },
+      { kind:"keys", geo:"box",     chord:[57,64,67,71] },
+      { kind:"keys", geo:"knot",    chord:[53,60,64,69] },
     ],
   },
   {
     name: "Bass", glow: "#6c7bff",
     palette: ["#6c7bff","#5c8cff","#5ca8ff","#7c5cff","#8c6cff","#5c6bff","#6c9cff","#9c7cff"],
     pads: [
-      { kind:"bass", shape:"square",   freq:N.A1, pat:"beat" },
-      { kind:"bass", shape:"hexagon",  freq:N.C2, pat:"off"  },
-      { kind:"bass", shape:"octagon",  freq:N.D2, pat:"beat" },
-      { kind:"bass", shape:"trapezoid",freq:N.E2, pat:"half" },
-      { kind:"bass", shape:"shield",   freq:N.G2, pat:"beat" },
-      { kind:"bass", shape:"hexFlat",  freq:N.A2, pat:"off"  },
-      { kind:"bass", shape:"pill",     freq:N.B1, pat:"beat" },
-      { kind:"bass", shape:"capsuleV", freq:N.C3, pat:"down" },
+      { kind:"bass", geo:"box",    off:false, seq:[33,33,33,33,33,33,33,33] },
+      { kind:"bass", geo:"cyl",    off:true,  seq:[45,45,45,45,45,45,45,45] },
+      { kind:"bass", geo:"octa",   off:false, seq:[33,33,40,40,36,36,43,43] },
+      { kind:"bass", geo:"dodeca", off:true,  seq:[45,43,40,43,45,48,45,43] },
+      { kind:"bass", geo:"icosa",  off:false, seq:[33,null,33,36,38,null,40,null] },
+      { kind:"bass", geo:"sphere", off:false, seq:[28,28,28,28,31,31,35,35] },
+      { kind:"bass", geo:"cone",   off:false, seq:[36,43,48,43,36,40,45,40] },
+      { kind:"bass", geo:"tetra",  off:true,  seq:[40,40,null,40,45,45,null,43] },
     ],
   },
   {
     name: "Beat", glow: "#ff7a3c",
     palette: ["#ff7a3c","#ff5c4c","#ff8f3c","#ff6c6c","#ffa23c","#ff5c7c","#ff9c5c","#ff6c3c"],
     pads: [
-      { kind:"beat", shape:"cross",      groove:[["kick","beat"],["hat","off"]] },
-      { kind:"beat", shape:"plusRound",  groove:[["kick","half"],["snare","back"],["hat","every"]] },
-      { kind:"beat", shape:"diamond",    groove:[["kick","beat"],["clap","back"],["hat","off"]] },
-      { kind:"beat", shape:"bowtie",     groove:[["kick","push"],["hat","every"],["snare","back"]] },
-      { kind:"beat", shape:"hourglass",  groove:[["kick","half"],["snare","back"],["hat","every"]] },
-      { kind:"beat", shape:"zigzag",     groove:[["tom","beat"],["kick","down"]] },
-      { kind:"beat", shape:"chevron",    groove:[["rim","off"],["cowbell","beat"]] },
-      { kind:"beat", shape:"chevronDown",groove:[["kick","half"],["snare","push"],["hat","every"]] },
+      { kind:"beat", geo:"box",    groove:[["kick","beat"],["hat","off"],["clap","back"]] },
+      { kind:"beat", geo:"octa",   groove:[["kick","beat"],["hat","every"],["rim","off"]] },
+      { kind:"beat", geo:"tetra",  groove:[["kick","beat"],["openhat","off"],["clap","back"]] },
+      { kind:"beat", geo:"cone",   groove:[["kick","beat"],["hat","every"],["snare","back"]] },
+      { kind:"beat", geo:"cyl",    groove:[["kick","half"],["clap","back"],["hat","off"]] },
+      { kind:"beat", geo:"icosa",  groove:[["kick","beat"],["tom","off"],["hat","every"]] },
+      { kind:"beat", geo:"dodeca", groove:[["kick","push"],["snare","back"],["hat","every"]] },
+      { kind:"beat", geo:"knot",   groove:[["kick","beat"],["rim","every"],["clap","back"]] },
     ],
   },
   {
     name: "Drums", glow: "#ffcf4a",
     palette: ["#ffcf4a","#ffd96a","#ffbe4a","#ffe08a","#ffc24a","#ffd24a","#ffe86a","#ffb84a"],
     pads: [
-      { kind:"drums", shape:"triangle", drum:"kick",    pat:"beat" },
-      { kind:"drums", shape:"triDown",  drum:"snare",   pat:"back" },
-      { kind:"drums", shape:"kite",     drum:"hat",     pat:"every" },
-      { kind:"drums", shape:"crystal",  drum:"clap",    pat:"back" },
-      { kind:"drums", shape:"pentaDown",drum:"tom",     pat:"half" },
-      { kind:"drums", shape:"gem",      drum:"rim",     pat:"off"  },
-      { kind:"drums", shape:"pentagon", drum:"cowbell", pat:"beat" },
-      { kind:"drums", shape:"doubleTri",drum:"crash",   pat:"down" },
+      { kind:"drums", geo:"tetra",  drum:"kick",    pat:"beat"  },
+      { kind:"drums", geo:"cone",   drum:"clap",    pat:"back"  },
+      { kind:"drums", geo:"octa",   drum:"hat",     pat:"off"   },
+      { kind:"drums", geo:"box",    drum:"openhat", pat:"off"   },
+      { kind:"drums", geo:"cyl",    drum:"snare",   pat:"back"  },
+      { kind:"drums", geo:"sphere", drum:"rim",     pat:"every" },
+      { kind:"drums", geo:"icosa",  drum:"tom",     pat:"half"  },
+      { kind:"drums", geo:"torus",  drum:"crash",   pat:"down"  },
     ],
   },
   {
     name: "Effects", glow: "#4ad7ff",
     palette: ["#4ad7ff","#4affd1","#6affa8","#4affe8","#8affd1","#4ad7ff","#6ac8ff","#4af0ff"],
     pads: [
-      { kind:"fx", shape:"bolt",      fx:"zap"   },
-      { kind:"fx", shape:"spark4",    fx:"laser" },
-      { kind:"fx", shape:"burst",     fx:"riser" },
-      { kind:"fx", shape:"star8",     fx:"swell" },
-      { kind:"fx", shape:"atom",      fx:"wobble"},
-      { kind:"fx", shape:"target",    fx:"drop"  },
-      { kind:"fx", shape:"ring",      fx:"sweep" },
-      { kind:"fx", shape:"spiralDot", fx:"noise" },
+      { kind:"fx", geo:"knot",   fx:"riser"  },
+      { kind:"fx", geo:"icosa",  fx:"laser"  },
+      { kind:"fx", geo:"octa",   fx:"zap"    },
+      { kind:"fx", geo:"torus",  fx:"sweep"  },
+      { kind:"fx", geo:"dodeca", fx:"wobble" },
+      { kind:"fx", geo:"sphere", fx:"swell"  },
+      { kind:"fx", geo:"tetra",  fx:"drop"   },
+      { kind:"fx", geo:"cone",   fx:"noise"  },
     ],
   },
   {
     name: "Synth", glow: "#b85cff",
     palette: ["#b85cff","#d65cff","#9c5cff","#c45cff","#e05cff","#a85cff","#cf5cff","#8c5cff"],
     pads: [
-      { kind:"synth", shape:"star5",    freq:N.C5, wave:"square",   pat:"off"   },
-      { kind:"synth", shape:"star6",    freq:N.D5, wave:"square",   pat:"every" },
-      { kind:"synth", shape:"sun",      freq:N.E5, wave:"sawtooth", pat:"off"   },
-      { kind:"synth", shape:"pinwheel", freq:N.G5, wave:"square",   pat:"off"   },
-      { kind:"synth", shape:"quaver",   freq:N.A5, wave:"sawtooth", pat:"off"   },
-      { kind:"synth", shape:"waveform", freq:N.B5, wave:"square",   pat:"every" },
-      { kind:"synth", shape:"ribbon",   freq:N.C6, wave:"sawtooth", pat:"off"   },
-      { kind:"synth", shape:"moon",     freq:N.G4, wave:"square",   pat:"beat"  },
+      { kind:"synth", geo:"octa",   wave:"sawtooth", off:false, seq:[69,72,76,81,79,76,72,69] },
+      { kind:"synth", geo:"knot",   wave:"square",   off:true,  seq:[76,76,79,76,72,72,74,72] },
+      { kind:"synth", geo:"icosa",  wave:"sawtooth", off:false, seq:[81,79,76,72,69,72,76,79] },
+      { kind:"synth", geo:"dodeca", wave:"square",   off:false, seq:[72,null,76,null,79,null,84,null] },
+      { kind:"synth", geo:"cone",   wave:"sawtooth", off:true,  seq:[69,76,72,79,74,81,76,72] },
+      { kind:"synth", geo:"torus",  wave:"square",   off:false, seq:[64,67,72,67,64,69,72,69] },
+      { kind:"synth", geo:"box",    wave:"sawtooth", off:false, seq:[79,79,76,76,72,72,69,69] },
+      { kind:"synth", geo:"sphere", wave:"square",   off:false, seq:[72,74,76,79,81,79,76,74] },
     ],
   },
   {
-    name: "Voice", glow: "#4ae0a0",
+    name: "Vocal", glow: "#4ae0a0",
     palette: ["#4ae0a0","#4ad7d1","#6ae0b8","#4ae0c0","#8ae0a0","#4ad7a8","#6ad7d1","#4ae090"],
     pads: [
-      { kind:"voice", shape:"heart",     word:"dance"      },
-      { kind:"voice", shape:"drop",      word:"love"       },
-      { kind:"voice", shape:"leaf",      word:"jump"       },
-      { kind:"voice", shape:"eye",       word:"oh my god"  },
-      { kind:"voice", shape:"arrow",     word:"yeah baby"  },
-      { kind:"voice", shape:"arrowRight",word:"boom"       },
-      { kind:"voice", shape:"triPair",   word:"hello"      },
-      { kind:"voice", shape:"parallelo", word:"let's go"   },
+      { kind:"vocal", geo:"sphere", vowel:"aa", seq:[69,null,72,null,76,null,72,null] },
+      { kind:"vocal", geo:"torus",  vowel:"oo", seq:[72,null,null,null,69,null,null,null] },
+      { kind:"vocal", geo:"cyl",    vowel:"ee", seq:[76,null,74,null,72,null,69,null] },
+      { kind:"vocal", geo:"dodeca", vowel:"oh", seq:[64,null,null,null,67,null,null,null] },
+      { kind:"vocal", geo:"icosa",  vowel:"aa", seq:[81,null,79,null,76,null,79,null] },
+      { kind:"vocal", geo:"knot",   vowel:"eh", seq:[69,null,72,null,74,null,76,null] },
+      { kind:"vocal", geo:"octa",   vowel:"oo", seq:[60,null,null,null,64,null,null,null] },
+      { kind:"vocal", geo:"cone",   vowel:"ah", seq:[72,null,76,null,79,null,76,null] },
     ],
   },
 ];
 
 /* ============================================================
-   AUDIO
+   AUDIO — graphe + bus d'effets
    ============================================================ */
-let ctx = null, master = null;
+let ctx = null, master = null, fxBus = null;
+let filterNode, delayNode, delaySend, revSend;
+const knobVals = { filter: 0.82, delay: 0.2, reverb: 0.25 };
+
+function makeIR(dur) {
+  const rate = ctx.sampleRate, len = Math.floor(rate * dur);
+  const buf = ctx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+  }
+  return buf;
+}
+
 function getCtx() {
   if (!ctx) {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain();
-    master.gain.value = 0.85;
-    master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = 0.9; master.connect(ctx.destination);
+
+    filterNode = ctx.createBiquadFilter();
+    filterNode.type = "lowpass"; filterNode.frequency.value = 12000; filterNode.Q.value = 0.8;
+    filterNode.connect(master);                      // chemin direct (dry)
+    fxBus = filterNode;
+
+    // delay synchronisé
+    delayNode = ctx.createDelay(1.0);
+    const fb = ctx.createGain(); fb.gain.value = 0.34;
+    delaySend = ctx.createGain(); delaySend.gain.value = 0;
+    filterNode.connect(delaySend); delaySend.connect(delayNode);
+    delayNode.connect(fb); fb.connect(delayNode);
+    const delayOut = ctx.createGain(); delayOut.gain.value = 0.9;
+    delayNode.connect(delayOut); delayOut.connect(master);
+
+    // reverb
+    const conv = ctx.createConvolver(); conv.buffer = makeIR(2.2);
+    revSend = ctx.createGain(); revSend.gain.value = 0;
+    filterNode.connect(revSend); revSend.connect(conv);
+    const revOut = ctx.createGain(); revOut.gain.value = 0.9;
+    conv.connect(revOut); revOut.connect(master);
+
+    applyKnob("filter"); applyKnob("delay"); applyKnob("reverb");
+    updateDelayTime();
   }
   if (ctx.state === "suspended") ctx.resume();
   return ctx;
+}
+
+function applyKnob(name) {
+  if (!ctx) return;
+  const v = knobVals[name];
+  if (name === "filter") filterNode.frequency.setTargetAtTime(200 * Math.pow(90, v), ctx.currentTime, 0.02);
+  if (name === "delay")  delaySend.gain.setTargetAtTime(v * 0.6, ctx.currentTime, 0.02);
+  if (name === "reverb") revSend.gain.setTargetAtTime(v * 0.75, ctx.currentTime, 0.02);
+}
+function updateDelayTime() {
+  if (ctx) delayNode.delayTime.setTargetAtTime((60 / transport.bpm) / 2, ctx.currentTime, 0.05);
 }
 
 function noiseBuffer(dur) {
@@ -198,80 +181,110 @@ function noiseBuffer(dur) {
   return buf;
 }
 
-// Note enveloppée générique
-function envTone(time, freq, wave, dur, peak, cutoff) {
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.type = wave;
-  o.frequency.setValueAtTime(freq, time);
-  let node = o;
-  if (cutoff) {
-    const f = ctx.createBiquadFilter();
-    f.type = "lowpass";
-    f.frequency.setValueAtTime(cutoff, time);
-    o.connect(f);
-    node = f;
-  }
+/* ---- Instruments ---- */
+function bassNote(time, freq, dur) {
+  const o = ctx.createOscillator(), sub = ctx.createOscillator();
+  const g = ctx.createGain(), f = ctx.createBiquadFilter();
+  o.type = "sawtooth"; o.frequency.value = freq;
+  sub.type = "sine"; sub.frequency.value = freq / 2;
+  f.type = "lowpass"; f.Q.value = 7;
+  f.frequency.setValueAtTime(220, time);
+  f.frequency.linearRampToValueAtTime(1500, time + 0.03);
+  f.frequency.exponentialRampToValueAtTime(260, time + dur);
   g.gain.setValueAtTime(0.0001, time);
-  g.gain.linearRampToValueAtTime(peak, time + 0.01);
+  g.gain.linearRampToValueAtTime(0.55, time + 0.012);
   g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-  node.connect(g).connect(master);
-  o.start(time);
-  o.stop(time + dur + 0.03);
+  o.connect(f); sub.connect(f); f.connect(g).connect(fxBus);
+  o.start(time); sub.start(time); o.stop(time + dur + 0.02); sub.stop(time + dur + 0.02);
+}
+
+function synthNote(time, freq, wave, dur) {
+  // deux oscillateurs légèrement désaccordés (supersaw léger) + filtre pluck
+  const g = ctx.createGain(), f = ctx.createBiquadFilter();
+  f.type = "lowpass"; f.Q.value = 3;
+  f.frequency.setValueAtTime(5200, time);
+  f.frequency.exponentialRampToValueAtTime(900, time + dur);
+  g.gain.setValueAtTime(0.0001, time);
+  g.gain.linearRampToValueAtTime(0.24, time + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+  [-6, 6].forEach((det) => {
+    const o = ctx.createOscillator();
+    o.type = wave; o.frequency.value = freq; o.detune.value = det;
+    o.connect(f); o.start(time); o.stop(time + dur + 0.02);
+  });
+  f.connect(g).connect(fxBus);
+}
+
+const VOWELS = {
+  aa: [800, 1150, 2900], oo: [325, 700, 2530], ee: [350, 2000, 2800],
+  oh: [500, 1000, 2500], eh: [600, 1700, 2400], ah: [700, 1220, 2600],
+};
+function vocalNote(time, freq, dur, vowel) {
+  // synthèse de formants : source saw + vibrato -> 3 bandpass -> chœur chanté
+  const src = ctx.createOscillator();
+  src.type = "sawtooth"; src.frequency.setValueAtTime(freq, time);
+  const vib = ctx.createOscillator(), vibG = ctx.createGain();
+  vib.frequency.value = 5.5; vibG.gain.value = freq * 0.012;
+  vib.connect(vibG).connect(src.frequency);
+
+  const amp = ctx.createGain();
+  amp.gain.setValueAtTime(0.0001, time);
+  amp.gain.linearRampToValueAtTime(0.3, time + 0.09);      // attaque douce = legato
+  amp.gain.setValueAtTime(0.3, time + dur * 0.6);
+  amp.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+
+  const F = VOWELS[vowel] || VOWELS.aa;
+  const gains = [1.0, 0.7, 0.35];
+  F.forEach((ff, i) => {
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = ff; bp.Q.value = 9;
+    const bg = ctx.createGain(); bg.gain.value = gains[i];
+    src.connect(bp).connect(bg).connect(amp);
+  });
+  amp.connect(fxBus);
+  src.start(time); vib.start(time);
+  src.stop(time + dur + 0.05); vib.stop(time + dur + 0.05);
 }
 
 function playDrum(kind, time) {
-  const out = ctx.createGain();
-  out.gain.value = 0.9;
-  out.connect(master);
-
+  const out = ctx.createGain(); out.gain.value = 0.95; out.connect(fxBus);
   const tone = (f0, f1, dur, type = "sine", vol = 0.9) => {
     const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(f0, time);
+    o.type = type; o.frequency.setValueAtTime(f0, time);
     o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), time + dur);
-    g.gain.setValueAtTime(vol, time);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-    o.connect(g).connect(out);
-    o.start(time); o.stop(time + dur);
+    g.gain.setValueAtTime(vol, time); g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    o.connect(g).connect(out); o.start(time); o.stop(time + dur);
   };
-  const noise = (dur, hp, vol = 0.7) => {
+  const noise = (dur, hp, vol = 0.7, type = "highpass", q = 0.7) => {
     const src = ctx.createBufferSource(); src.buffer = noiseBuffer(dur);
-    const g = ctx.createGain(), filt = ctx.createBiquadFilter();
-    filt.type = "highpass"; filt.frequency.value = hp;
-    g.gain.setValueAtTime(vol, time);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-    src.connect(filt).connect(g).connect(out);
-    src.start(time); src.stop(time + dur);
+    const g = ctx.createGain(), fl = ctx.createBiquadFilter();
+    fl.type = type; fl.frequency.value = hp; fl.Q.value = q;
+    g.gain.setValueAtTime(vol, time); g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    src.connect(fl).connect(g).connect(out); src.start(time); src.stop(time + dur);
   };
-
   switch (kind) {
-    case "kick":    tone(150, 45, 0.4, "sine", 1.0); break;
-    case "snare":   tone(180, 90, 0.18, "triangle", 0.5); noise(0.2, 1200, 0.7); break;
-    case "hat":     noise(0.05, 8000, 0.4); break;
-    case "tom":     tone(220, 90, 0.35, "sine", 0.9); break;
-    case "clap":    noise(0.02, 1500, 0.6); setTimeout(() => { if (ctx) noise(0.12, 1500, 0.6); }, 16); break;
-    case "rim":     tone(440, 300, 0.06, "square", 0.5); break;
-    case "cowbell": tone(560, 560, 0.16, "square", 0.4); tone(845, 845, 0.16, "square", 0.3); break;
-    case "crash":   noise(0.6, 6000, 0.5); break;
+    case "kick":    tone(160, 45, 0.45, "sine", 1.0); noise(0.02, 1200, 0.5); break;
+    case "snare":   tone(190, 100, 0.16, "triangle", 0.4); noise(0.18, 1600, 0.7); break;
+    case "hat":     noise(0.045, 9000, 0.4); break;
+    case "openhat": noise(0.28, 8500, 0.35); break;
+    case "clap":    noise(0.015, 1500, 0.6); setTimeout(() => { if (ctx) noise(0.02, 1500, 0.6); }, 12);
+                    setTimeout(() => { if (ctx) noise(0.14, 1400, 0.6); }, 26); break;
+    case "rim":     tone(440, 300, 0.05, "square", 0.45); break;
+    case "tom":     tone(240, 100, 0.3, "sine", 0.85); break;
+    case "cowbell": tone(560, 560, 0.15, "square", 0.4); tone(845, 845, 0.15, "square", 0.3); break;
+    case "crash":   noise(0.7, 6000, 0.45); break;
     default:        noise(0.25, 400, 0.6); break;
   }
 }
 
 function playFx(kind, time) {
-  const out = ctx.createGain();
-  out.gain.value = 0.8;
-  out.connect(master);
-
+  const out = ctx.createGain(); out.gain.value = 0.8; out.connect(fxBus);
   const sweepTone = (f0, f1, dur, type, vol) => {
     const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(f0, time);
+    o.type = type; o.frequency.setValueAtTime(f0, time);
     o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), time + dur);
-    g.gain.setValueAtTime(vol, time);
-    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
-    o.connect(g).connect(out);
-    o.start(time); o.stop(time + dur + 0.02);
+    g.gain.setValueAtTime(vol, time); g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    o.connect(g).connect(out); o.start(time); o.stop(time + dur + 0.02);
   };
   const noiseSweep = (f0, f1, dur, vol, up) => {
     const src = ctx.createBufferSource(); src.buffer = noiseBuffer(dur);
@@ -281,31 +294,26 @@ function playFx(kind, time) {
     f.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), time + dur);
     g.gain.setValueAtTime(up ? 0.0001 : vol, time);
     g.gain.exponentialRampToValueAtTime(up ? vol : 0.0001, time + dur);
-    src.connect(f).connect(g).connect(out);
-    src.start(time); src.stop(time + dur);
+    src.connect(f).connect(g).connect(out); src.start(time); src.stop(time + dur);
   };
-
   switch (kind) {
     case "zap":    sweepTone(900, 120, 0.18, "sawtooth", 0.6); break;
     case "laser":  sweepTone(1800, 200, 0.3, "square", 0.4); break;
-    case "riser":  noiseSweep(300, 6000, 1.1, 0.5, true); break;
-    case "swell":  noiseSweep(6000, 500, 1.0, 0.5, false); break;
+    case "riser":  noiseSweep(300, 7000, 1.2, 0.5, true); break;
+    case "swell":  noiseSweep(7000, 500, 1.0, 0.5, false); break;
     case "wobble": {
       const o = ctx.createOscillator(), g = ctx.createGain(), f = ctx.createBiquadFilter(),
             lfo = ctx.createOscillator(), lg = ctx.createGain();
       o.type = "sawtooth"; o.frequency.value = 110;
-      f.type = "lowpass"; f.frequency.value = 700;
-      lfo.frequency.value = 6; lg.gain.value = 500;
-      lfo.connect(lg).connect(f.frequency);
-      g.gain.setValueAtTime(0.5, time);
-      g.gain.exponentialRampToValueAtTime(0.0001, time + 1.0);
+      f.type = "lowpass"; f.frequency.value = 700; f.Q.value = 6;
+      lfo.frequency.value = 7; lg.gain.value = 600; lfo.connect(lg).connect(f.frequency);
+      g.gain.setValueAtTime(0.5, time); g.gain.exponentialRampToValueAtTime(0.0001, time + 1.0);
       o.connect(f).connect(g).connect(out);
-      o.start(time); lfo.start(time); o.stop(time + 1.0); lfo.stop(time + 1.0);
-      break;
+      o.start(time); lfo.start(time); o.stop(time + 1.0); lfo.stop(time + 1.0); break;
     }
     case "drop":   sweepTone(400, 40, 0.5, "sine", 0.7); break;
     case "sweep":  noiseSweep(400, 4000, 0.7, 0.45, true); break;
-    default:       { // noise burst
+    default: {
       const src = ctx.createBufferSource(); src.buffer = noiseBuffer(0.4);
       const g = ctx.createGain(); g.gain.setValueAtTime(0.4, time);
       g.gain.exponentialRampToValueAtTime(0.0001, time + 0.4);
@@ -314,83 +322,47 @@ function playFx(kind, time) {
   }
 }
 
-// Nappe continue (drone) — renvoie un handle avec stop()
-function startDrone(freqs) {
+function startKeys(chordMidi) {
   const t = ctx.currentTime;
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, t);
-  g.gain.linearRampToValueAtTime(0.14, t + 0.7);
-  g.connect(master);
+  const g = ctx.createGain(), f = ctx.createBiquadFilter();
+  f.type = "lowpass"; f.frequency.value = 2600; f.Q.value = 0.6;
+  g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.1, t + 0.8);
+  f.connect(g).connect(fxBus);
   const oscs = [];
-  freqs.forEach((f, i) => {
-    const o = ctx.createOscillator();
-    o.type = i === 0 ? "sine" : "triangle";
-    o.frequency.value = f;
-    o.detune.value = (i - 1) * 4; // léger désaccord pour la chaleur
-    o.connect(g);
-    o.start(t);
-    oscs.push(o);
+  chordMidi.forEach((m) => {
+    [-7, 7].forEach((det) => {
+      const o = ctx.createOscillator();
+      o.type = "sawtooth"; o.frequency.value = mtof(m); o.detune.value = det;
+      o.connect(f); o.start(t); oscs.push(o);
+    });
   });
   return {
     stop() {
       const now = ctx.currentTime;
-      g.gain.cancelScheduledValues(now);
-      g.gain.setValueAtTime(g.gain.value, now);
-      g.gain.linearRampToValueAtTime(0.0001, now + 0.45);
-      oscs.forEach((o) => { try { o.stop(now + 0.5); } catch (e) {} });
+      g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now);
+      g.gain.linearRampToValueAtTime(0.0001, now + 0.5);
+      oscs.forEach((o) => { try { o.stop(now + 0.55); } catch (e) {} });
     },
   };
-}
-
-let speechPrimed = false;
-// Débloque la synthèse vocale : doit être appelé depuis un vrai geste utilisateur
-function primeSpeech() {
-  if (speechPrimed || !("speechSynthesis" in window)) return;
-  try {
-    const u = new SpeechSynthesisUtterance(" ");
-    u.volume = 0;
-    window.speechSynthesis.resume();
-    window.speechSynthesis.speak(u);
-    speechPrimed = true;
-  } catch (e) {}
-}
-
-function speakWord(word) {
-  if (!("speechSynthesis" in window)) return;
-  try {
-    const s = window.speechSynthesis;
-    // évite l'empilement des mots d'un tour sur l'autre
-    if (s.speaking || s.pending) s.cancel();
-    s.resume();
-    const u = new SpeechSynthesisUtterance(word);
-    u.rate = 1.05; u.pitch = 1; u.volume = 1;
-    s.speak(u);
-  } catch (e) {}
 }
 
 /* ============================================================
    TRANSPORT / SÉQUENCEUR
    ============================================================ */
-const SPB = 2;                         // sous-pas par temps (croches)
-const transport = { bpm: 110, beats: 8 };
-let playing = false;
-let userPaused = false;
-let timerId = null;
-let currentSub = 0;
-let nextTime = 0;
+const SPB = 2;
+const transport = { bpm: 120, beats: 8 };
+let playing = false, userPaused = false, timerId = null, currentSub = 0, nextTime = 0;
 const LOOKAHEAD = 0.1, TICK_MS = 25;
 
-const active = new Map();              // "p:i" -> pad (méta)
-const drones = new Map();              // "p:i" -> handle
-const visualQueue = [];                // {sub, time, fired:[keys]}
+const active = new Map();        // "p:i" -> {pad..., phaseSub}
+const keysHandles = new Map();   // "p:i" -> handle
+const visualQueue = [];
 
 function totalSubs() { return transport.beats * SPB; }
 function subDur() { return (60 / transport.bpm) / SPB; }
 
-// Un pad rythmique doit-il déclencher sur ce sous-pas ?
 function hits(name, sub) {
-  const beat = Math.floor(sub / SPB);
-  const onBeat = sub % SPB === 0;
+  const beat = Math.floor(sub / SPB), onBeat = sub % SPB === 0;
   switch (name) {
     case "every": return true;
     case "beat":  return onBeat;
@@ -403,38 +375,45 @@ function hits(name, sub) {
   }
 }
 
-// Déclenche l'audio d'un pad ; renvoie true s'il a sonné (pour le visuel)
 function triggerPad(pad, time, sub) {
+  const total = totalSubs();
+  const rel = (((sub - (pad.phaseSub || 0)) % total) + total) % total;
+  const beat = Math.floor(rel / SPB), onBeat = rel % SPB === 0;
+  const beatDur = 60 / transport.bpm;
   switch (pad.kind) {
-    case "bass":
-      if (hits(pad.pat, sub)) { envTone(time, pad.freq, "sawtooth", 0.3, 0.45, 700); return true; }
-      return false;
-    case "synth":
-      if (hits(pad.pat, sub)) { envTone(time, pad.freq, pad.wave, 0.18, 0.22, 3500); return true; }
-      return false;
-    case "drums":
-      if (hits(pad.pat, sub)) { playDrum(pad.drum, time); return true; }
-      return false;
+    case "keys": return false;
+    case "bass": {
+      const trig = pad.off ? (rel % SPB === 1) : onBeat;
+      if (!trig) return false;
+      const n = pad.seq[beat % pad.seq.length]; if (n == null) return false;
+      bassNote(time, mtof(n), beatDur * 0.92); return true;
+    }
+    case "synth": {
+      const trig = pad.off ? (rel % SPB === 1) : onBeat;
+      if (!trig) return false;
+      const n = pad.seq[beat % pad.seq.length]; if (n == null) return false;
+      synthNote(time, mtof(n), pad.wave, beatDur * 0.55); return true;
+    }
+    case "vocal": {
+      if (!onBeat) return false;
+      const n = pad.seq[beat % pad.seq.length]; if (n == null) return false;
+      vocalNote(time, mtof(n), beatDur * 1.9, pad.vowel); return true;
+    }
+    case "drums": if (hits(pad.pat, rel)) { playDrum(pad.drum, time); return true; } return false;
     case "beat": {
       let any = false;
-      pad.groove.forEach(([drum, pat]) => { if (hits(pat, sub)) { playDrum(drum, time); any = true; } });
+      pad.groove.forEach(([d, p]) => { if (hits(p, rel)) { playDrum(d, time); any = true; } });
       return any;
     }
-    case "fx":
-      if (sub === 0) { playFx(pad.fx, time); return true; }
-      return false;
-    case "voice":
-      // la parole est déclenchée dans la boucle visuelle (pas d'ordonnancement audio précis)
-      return sub === 0;
-    default:
-      return false;
+    case "fx": if (rel === 0) { playFx(pad.fx, time); return true; } return false;
   }
+  return false;
 }
 
 function scheduleSub(sub, time) {
   const fired = [];
   active.forEach((pad, key) => {
-    if (pad.kind === "drone") return;
+    if (pad.kind === "keys") return;
     if (triggerPad(pad, time, sub)) fired.push(key);
   });
   visualQueue.push({ sub, time, fired });
@@ -451,287 +430,376 @@ function schedulerTick() {
 
 function startPlaying() {
   if (playing) return;
-  getCtx();
-  playing = true;
-  userPaused = false;
-  currentSub = 0;
-  nextTime = ctx.currentTime + 0.08;
-  // (re)démarre les nappes actives
+  getCtx(); playing = true; userPaused = false;
+  currentSub = 0; nextTime = ctx.currentTime + 0.08;
   active.forEach((pad, key) => {
-    if (pad.kind === "drone" && !drones.has(key)) drones.set(key, startDrone(pad.freqs));
+    if (pad.kind === "keys" && !keysHandles.has(key)) keysHandles.set(key, startKeys(pad.chord));
   });
   schedulerTick();
-  requestAnimationFrame(visualLoop);
-  playBtn.classList.add("playing");
-  playBtn.textContent = "❚❚";
+  playBtn.classList.add("playing"); playBtn.textContent = "❚❚";
 }
-
 function stopPlaying() {
-  playing = false;
-  clearTimeout(timerId);
-  drones.forEach((h) => h.stop());
-  drones.clear();
+  playing = false; clearTimeout(timerId);
+  keysHandles.forEach((h) => h.stop()); keysHandles.clear();
   visualQueue.length = 0;
-  playBtn.classList.remove("playing");
-  playBtn.textContent = "▶";
+  playBtn.classList.remove("playing"); playBtn.textContent = "▶";
   clearPlayhead();
 }
-
 function clearAll() {
-  active.forEach((pad, key) => {
-    const el = padEls.get(key);
-    if (el) el.classList.remove("active");
-  });
-  active.clear();
-  stopPlaying();
+  active.clear(); stopPlaying();
+  padMeshes.forEach((m) => { m.userData.active = false; });
   updateDotActivity();
 }
 
-/* ---------------- Boucle visuelle ---------------- */
-let lastBeatShown = -1;
-function visualLoop() {
-  if (!playing) return;
-  const now = ctx.currentTime;
-  while (visualQueue.length && visualQueue[0].time <= now) {
-    const e = visualQueue.shift();
-    const beat = Math.floor(e.sub / SPB);
-    if (beat !== lastBeatShown) { setPlayhead(beat); lastBeatShown = beat; }
-    e.fired.forEach((key) => {
-      const pad = active.get(key);
-      if (!pad) return;
-      flashPad(key);
-      if (pad.kind === "voice") speakWord(pad.word);
-    });
+/* ============================================================
+   SCÈNE 3D (Three.js r128)
+   ============================================================ */
+const canvas = document.getElementById("scene");
+let renderer, scene, camera, padGroup;
+let camR = 9, camTheta = 0, camPhi = 1.15;
+const padMeshes = [];
+// disposition 2 colonnes × 4 rangées (adaptée au portrait mobile)
+const COLX = [-1.35, 1.35], ROWY = [2.7, 0.9, -0.9, -2.7];
+function padPos(i) { return { x: COLX[i % 2], y: ROWY[Math.floor(i / 2)] }; }
+const VTAN = Math.tan((50 * Math.PI / 180) / 2);   // demi-FOV vertical
+function fitRequired() {
+  const aspect = (canvas.clientWidth || 1) / (canvas.clientHeight || 1);
+  const needV = 3.7 / VTAN;                          // y max (2.7) + rayon objet
+  const needH = 2.4 / (VTAN * Math.max(aspect, 0.3));
+  return Math.max(needV, needH) + 0.4;
+}
+
+function makeGeo(type) {
+  switch (type) {
+    case "sphere": return new THREE.SphereGeometry(0.72, 32, 24);
+    case "cone":   return new THREE.ConeGeometry(0.72, 1.3, 40);
+    case "torus":  return new THREE.TorusGeometry(0.6, 0.24, 20, 48);
+    case "octa":   return new THREE.OctahedronGeometry(0.9);
+    case "dodeca": return new THREE.DodecahedronGeometry(0.85);
+    case "icosa":  return new THREE.IcosahedronGeometry(0.9);
+    case "knot":   return new THREE.TorusKnotGeometry(0.52, 0.18, 110, 16);
+    case "cyl":    return new THREE.CylinderGeometry(0.62, 0.62, 1.1, 40);
+    case "tetra":  return new THREE.TetrahedronGeometry(1.0);
+    default:       return new THREE.BoxGeometry(1.15, 1.15, 1.15);
   }
-  requestAnimationFrame(visualLoop);
+}
+
+function initThree() {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+  padGroup = new THREE.Group(); scene.add(padGroup);
+
+  scene.add(new THREE.AmbientLight(0x50507a, 1.3));
+  const d1 = new THREE.DirectionalLight(0xffffff, 1.1); d1.position.set(5, 8, 6); scene.add(d1);
+  const d2 = new THREE.DirectionalLight(0x6688ff, 0.6); d2.position.set(-6, -3, 2); scene.add(d2);
+  const p1 = new THREE.PointLight(0xff5c8a, 0.6, 30); p1.position.set(0, 0, 5); scene.add(p1);
+
+  resizeThree();
+  camR = fitRequired();
+  window.addEventListener("resize", resizeThree);
+  requestAnimationFrame(animate);
+}
+
+function resizeThree() {
+  const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  const need = fitRequired();
+  if (camR < need) camR = need;                      // garde les 8 objets visibles
+}
+
+function buildPanelMeshes(pi) {
+  while (padGroup.children.length) {
+    const m = padGroup.children.pop();
+    m.geometry.dispose(); m.material.dispose();
+  }
+  padMeshes.length = 0;
+  const panel = PANELS[pi];
+  panel.pads.forEach((pad, i) => {
+    const color = new THREE.Color(panel.palette[i % panel.palette.length]);
+    const mat = new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: 0.12, roughness: 0.3, metalness: 0.45,
+    });
+    const mesh = new THREE.Mesh(makeGeo(pad.geo), mat);
+    const pos = padPos(i);
+    mesh.position.set(pos.x, pos.y, 0);
+    mesh.userData = {
+      idx: i, key: `${pi}:${i}`, base: 0.82, y0: pos.y,
+      active: active.has(`${pi}:${i}`), hitT: -1,
+      spin: 0.2 + Math.random() * 0.3, phase: Math.random() * Math.PI * 2,
+      color,
+    };
+    mesh.scale.setScalar(0.82);
+    padGroup.add(mesh); padMeshes.push(mesh);
+  });
+}
+
+function updateCamera() {
+  const sp = Math.sin(camPhi);
+  camera.position.set(camR * sp * Math.sin(camTheta), camR * Math.cos(camPhi), camR * sp * Math.cos(camTheta));
+  camera.lookAt(0, 0, 0);
+}
+
+let lastT = performance.now();
+function animate(now) {
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+
+  // audio -> visuel (playhead + flashs)
+  if (playing && ctx) {
+    const at = ctx.currentTime;
+    while (visualQueue.length && visualQueue[0].time <= at) {
+      const e = visualQueue.shift();
+      const beat = Math.floor(e.sub / SPB);
+      if (beat !== lastBeatShown) { setPlayhead(beat); lastBeatShown = beat; }
+      e.fired.forEach((key) => {
+        const m = padMeshes.find((x) => x.userData.key === key);
+        if (m) m.userData.hitT = now;
+      });
+    }
+  }
+
+  padMeshes.forEach((m) => {
+    const u = m.userData;
+    const act = u.active;
+    // rotation
+    const rot = (act ? u.spin * 1.8 : u.spin * 0.25) * dt;
+    m.rotation.y += rot; m.rotation.x += rot * 0.4;
+    // flash au déclenchement
+    let hit = 0;
+    if (u.hitT >= 0) { hit = Math.max(0, 1 - (now - u.hitT) / 260); if (hit <= 0) u.hitT = -1; }
+    // échelle + flottement + lueur
+    const bob = Math.sin(now / 600 + u.phase) * (act ? 0.08 : 0.03);
+    const target = (act ? 1.04 : 0.82) + hit * 0.28;
+    m.scale.setScalar(m.scale.x + (target - m.scale.x) * Math.min(1, dt * 14));
+    m.position.y = u.y0 + bob;
+    m.material.emissiveIntensity = (act ? 0.6 : 0.12) + hit * 1.3;
+  });
+
+  updateCamera();
+  renderer.render(scene, camera);
+}
+
+/* ---- picking (tap sur un objet) ---- */
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pickAt(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  ndc.x = ((clientX - r.left) / r.width) * 2 - 1;
+  ndc.y = -((clientY - r.top) / r.height) * 2 + 1;
+  raycaster.setFromCamera(ndc, camera);
+  const hit = raycaster.intersectObjects(padMeshes, false)[0];
+  return hit ? hit.object.userData.idx : -1;
 }
 
 /* ============================================================
-   DOM
+   INTERACTION (orbite / zoom / tap)
    ============================================================ */
-const track = document.getElementById("track");
+const pointers = new Map();
+let orbiting = false, downX = 0, downY = 0, downT = 0, pinchDist = 0, movedMax = 0;
+
+canvas.addEventListener("pointerdown", (e) => {
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  getCtx(); primeAudio();
+  if (pointers.size === 1) {
+    orbiting = false; movedMax = 0; downX = e.clientX; downY = e.clientY; downT = performance.now();
+  } else if (pointers.size === 2) {
+    const p = [...pointers.values()];
+    pinchDist = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+  }
+  hideHint();
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!pointers.has(e.pointerId)) return;
+  const prev = pointers.get(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size === 2) {
+    const p = [...pointers.values()];
+    const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+    if (pinchDist) camR = Math.max(4.5, Math.min(14, camR * (pinchDist / d)));
+    pinchDist = d; return;
+  }
+  const dx = e.clientX - downX, dy = e.clientY - downY;
+  movedMax = Math.max(movedMax, Math.abs(dx), Math.abs(dy));
+  if (movedMax > 6) orbiting = true;
+  if (orbiting) {
+    camTheta -= (e.clientX - prev.x) * 0.006;
+    camPhi = Math.max(0.3, Math.min(Math.PI - 0.3, camPhi - (e.clientY - prev.y) * 0.006));
+  }
+});
+
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if (pointers.size === 0 && !orbiting && performance.now() - downT < 500 && movedMax < 8) {
+    const idx = pickAt(e.clientX, e.clientY);
+    if (idx >= 0) togglePad(current, idx);
+  }
+  if (pointers.size < 2) pinchDist = 0;
+}
+canvas.addEventListener("pointerup", endPointer);
+canvas.addEventListener("pointercancel", endPointer);
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  camR = Math.max(4.5, Math.min(14, camR * (1 + e.deltaY * 0.0012)));
+}, { passive: false });
+
+/* ============================================================
+   TOGGLE PAD
+   ============================================================ */
+function togglePad(pi, i) {
+  const key = `${pi}:${i}`;
+  const pad = PANELS[pi].pads[i];
+  getCtx(); primeAudio();
+  const mesh = padMeshes.find((m) => m.userData.idx === i);
+
+  if (active.has(key)) {
+    active.delete(key);
+    if (keysHandles.has(key)) { keysHandles.get(key).stop(); keysHandles.delete(key); }
+    if (mesh) mesh.userData.active = false;
+  } else {
+    let phaseSub;
+    if (!playing) phaseSub = 0;
+    else phaseSub = (Math.ceil(currentSub / SPB) * SPB) % totalSubs();
+    active.set(key, { ...pad, panel: pi, phaseSub });
+    if (!playing) startPlaying();
+    else if (pad.kind === "keys" && !keysHandles.has(key)) keysHandles.set(key, startKeys(pad.chord));
+    if (mesh) { mesh.userData.active = true; mesh.userData.hitT = performance.now(); }
+  }
+  updateDotActivity();
+}
+
+// Déblocage audio mobile (geste direct)
+let audioPrimed = false;
+function primeAudio() {
+  if (audioPrimed || !ctx) return;
+  try {
+    const b = ctx.createBufferSource(); b.buffer = noiseBuffer(0.01);
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    b.connect(g).connect(ctx.destination); b.start(); audioPrimed = true;
+  } catch (e) {}
+}
+
+/* ============================================================
+   DOM : dots, label, séquenceur, potards
+   ============================================================ */
 const dotsWrap = document.getElementById("dots");
 const panelLabel = document.getElementById("panelLabel");
 const seqBar = document.getElementById("seqBar");
 const playBtn = document.getElementById("playBtn");
 const clearBtn = document.getElementById("clearBtn");
 const bpmVal = document.getElementById("bpmVal");
-const padEls = new Map();
+const fxrow = document.getElementById("fxrow");
+const hint3d = document.getElementById("hint3d");
 
 PANELS.forEach((panel, pi) => {
-  const slide = document.createElement("section");
-  slide.className = "slide";
-  const grid = document.createElement("div");
-  grid.className = "grid";
-
-  panel.pads.forEach((pad, i) => {
-    const key = `${pi}:${i}`;
-    const color = panel.palette[i % panel.palette.length];
-    const cell = document.createElement("button");
-    cell.className = "cell";
-    cell.type = "button";
-    cell.style.setProperty("--glow", panel.glow);
-    cell.setAttribute("aria-label", `${panel.name} ${i + 1}`);
-    cell.innerHTML = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">${SHAPES[pad.shape](color)}</svg>`;
-
-    cell.addEventListener("click", (e) => {
-      e.preventDefault();
-      if (suppressTap) return;
-      togglePad(pi, i, cell, e);
-    });
-
-    padEls.set(key, cell);
-    grid.appendChild(cell);
-  });
-
-  slide.appendChild(grid);
-  track.appendChild(slide);
-
   const dot = document.createElement("button");
   dot.className = "dot" + (pi === 0 ? " active" : "");
-  dot.type = "button";
-  dot.style.setProperty("--dot-glow", panel.glow);
-  dot.setAttribute("aria-label", `écran ${pi + 1} : ${panel.name}`);
+  dot.type = "button"; dot.style.setProperty("--dot-glow", panel.glow);
+  dot.setAttribute("aria-label", `${panel.name}`);
   dot.addEventListener("click", () => goTo(pi));
   dotsWrap.appendChild(dot);
 });
-
-/* ---------------- Toggle d'un pad ---------------- */
-function togglePad(pi, i, cell, e) {
-  const key = `${pi}:${i}`;
-  const pad = PANELS[pi].pads[i];
-  getCtx();
-  primeSpeech();
-
-  if (active.has(key)) {
-    active.delete(key);
-    cell.classList.remove("active");
-    if (drones.has(key)) { drones.get(key).stop(); drones.delete(key); }
-  } else {
-    active.set(key, { ...pad, panel: pi });
-    cell.classList.add("active");
-    rippleAt(cell, e);
-    if (!playing) startPlaying();                    // (re)démarre le transport, remet les nappes
-    else if (pad.kind === "drone" && !drones.has(key)) drones.set(key, startDrone(pad.freqs));
-    if (pad.kind === "voice") speakWord(pad.word);    // feedback immédiat (geste direct)
-    flashPad(key);
-  }
-  updateDotActivity();
-}
-
-/* ---------------- Effets visuels ---------------- */
-function flashPad(key) {
-  const el = padEls.get(key);
-  if (!el || typeof el.animate !== "function") return;
-  const svg = el.querySelector("svg");
-  (svg || el).animate(
-    [{ transform: "scale(1.22)", filter: "brightness(1.8)" }, { transform: "scale(1)", filter: "brightness(1)" }],
-    { duration: 240, easing: "ease-out" }
-  );
-}
-
-function rippleAt(cell, e) {
-  const r = document.createElement("span");
-  r.className = "ripple";
-  const rect = cell.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height) * 1.6;
-  const x = (e && e.clientX ? e.clientX - rect.left : rect.width / 2) - size / 2;
-  const y = (e && e.clientY ? e.clientY - rect.top : rect.height / 2) - size / 2;
-  r.style.width = r.style.height = size + "px";
-  r.style.left = x + "px";
-  r.style.top = y + "px";
-  cell.appendChild(r);
-  if (typeof r.animate === "function") {
-    const a = r.animate(
-      [{ transform: "scale(0)", opacity: 0.5 }, { transform: "scale(1)", opacity: 0 }],
-      { duration: 550, easing: "ease-out" }
-    );
-    a.onfinish = () => r.remove();
-  } else {
-    setTimeout(() => r.remove(), 550);
-  }
-}
+const dots = Array.from(dotsWrap.children);
 
 function updateDotActivity() {
-  const dots = dotsWrap.children;
   for (let p = 0; p < PANELS.length; p++) {
     let has = false;
-    for (let i = 0; i < PANELS[p].pads.length; i++) {
-      if (active.has(`${p}:${i}`)) { has = true; break; }
-    }
+    for (let i = 0; i < PANELS[p].pads.length; i++) if (active.has(`${p}:${i}`)) { has = true; break; }
     dots[p].classList.toggle("has-active", has);
   }
 }
 
-/* ---------------- Séquenceur visuel ---------------- */
-let stepEls = [];
-function buildSeqBar() {
-  seqBar.innerHTML = "";
-  stepEls = [];
-  for (let b = 0; b < transport.beats; b++) {
-    const s = document.createElement("div");
-    s.className = "step";
-    seqBar.appendChild(s);
-    stepEls.push(s);
-  }
-  lastBeatShown = -1;
-}
-function setPlayhead(beat) {
-  stepEls.forEach((s, i) => s.classList.toggle("play", i === beat));
-}
-function clearPlayhead() {
-  stepEls.forEach((s) => s.classList.remove("play"));
-  lastBeatShown = -1;
-}
-
-/* ============================================================
-   NAVIGATION (swipe + dots)
-   ============================================================ */
-const viewport = document.querySelector(".viewport");
-const dots = Array.from(dotsWrap.children);
 let current = 0;
-let suppressTap = false;
-
-function setTransform(x, animate) {
-  track.style.transition = animate ? "transform 0.32s cubic-bezier(.22,.61,.36,1)" : "none";
-  track.style.transform = `translateX(${x}px)`;
-}
 function goTo(index) {
-  current = Math.max(0, Math.min(PANELS.length - 1, index));
-  setTransform(-current * viewport.clientWidth, true);
+  current = (index + PANELS.length) % PANELS.length;
   dots.forEach((d, i) => d.classList.toggle("active", i === current));
   panelLabel.textContent = PANELS[current].name;
+  buildPanelMeshes(current);
 }
-window.addEventListener("resize", () => setTransform(-current * viewport.clientWidth, false));
-
-let startX = 0, startY = 0, dragging = false, locked = null;
-viewport.addEventListener("pointerdown", (e) => {
-  dragging = true; locked = null; suppressTap = false;
-  startX = e.clientX; startY = e.clientY;
-  primeSpeech();
-  setTransform(-current * viewport.clientWidth, false);
-});
-viewport.addEventListener("pointermove", (e) => {
-  if (!dragging) return;
-  const dx = e.clientX - startX, dy = e.clientY - startY;
-  if (locked === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
-    locked = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
-  }
-  if (locked !== "x") return;
-  suppressTap = true;
-  let offset = -current * viewport.clientWidth + dx;
-  const max = 0, min = -(PANELS.length - 1) * viewport.clientWidth;
-  if (offset > max) offset = max + (offset - max) * 0.35;
-  if (offset < min) offset = min + (offset - min) * 0.35;
-  setTransform(offset, false);
-});
-function endDrag(e) {
-  if (!dragging) return;
-  dragging = false;
-  const dx = e.clientX - startX;
-  const threshold = Math.min(80, viewport.clientWidth * 0.2);
-  if (locked === "x" && Math.abs(dx) > threshold) goTo(current + (dx < 0 ? 1 : -1));
-  else goTo(current);
-  setTimeout(() => { suppressTap = false; }, 0);
-}
-viewport.addEventListener("pointerup", endDrag);
-viewport.addEventListener("pointercancel", endDrag);
-viewport.addEventListener("pointerleave", (e) => { if (dragging) endDrag(e); });
-
+document.getElementById("prev").addEventListener("click", () => goTo(current - 1));
+document.getElementById("next").addEventListener("click", () => goTo(current + 1));
 window.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft") goTo(current - 1);
   if (e.key === "ArrowRight") goTo(current + 1);
 });
 
-/* ============================================================
-   CONTRÔLES DE TRANSPORT
-   ============================================================ */
+/* séquenceur */
+let stepEls = [], lastBeatShown = -1;
+function buildSeqBar() {
+  seqBar.innerHTML = ""; stepEls = [];
+  for (let b = 0; b < transport.beats; b++) {
+    const s = document.createElement("div"); s.className = "step";
+    seqBar.appendChild(s); stepEls.push(s);
+  }
+  lastBeatShown = -1;
+}
+function setPlayhead(beat) { stepEls.forEach((s, i) => s.classList.toggle("play", i === beat)); }
+function clearPlayhead() { stepEls.forEach((s) => s.classList.remove("play")); lastBeatShown = -1; }
+
+/* potards */
+const KNOBS = [
+  { id: "filter", label: "Filtre", glow: "#4ad7d1" },
+  { id: "delay",  label: "Delay",  glow: "#7c5cff" },
+  { id: "reverb", label: "Reverb", glow: "#ff5c8a" },
+];
+KNOBS.forEach((k) => {
+  const wrap = document.createElement("div"); wrap.className = "knob";
+  wrap.innerHTML = `<div class="dial" style="--glow:${k.glow}"><span class="tick"></span></div><label>${k.label}</label>`;
+  const dial = wrap.querySelector(".dial"), tick = wrap.querySelector(".tick");
+  const render = () => { tick.style.transform = `rotate(${-135 + knobVals[k.id] * 270}deg)`; };
+  render();
+  let dragging = false, lastY = 0;
+  dial.addEventListener("pointerdown", (e) => {
+    dragging = true; lastY = e.clientY; dial.setPointerCapture(e.pointerId); getCtx();
+  });
+  dial.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    knobVals[k.id] = Math.max(0, Math.min(1, knobVals[k.id] - (e.clientY - lastY) * 0.006));
+    lastY = e.clientY; render(); applyKnob(k.id);
+  });
+  const up = (e) => { dragging = false; };
+  dial.addEventListener("pointerup", up); dial.addEventListener("pointercancel", up);
+  fxrow.appendChild(wrap);
+});
+
+/* transport controls */
 playBtn.addEventListener("click", () => {
-  getCtx();
-  primeSpeech();
+  getCtx(); primeAudio();
   if (playing) { userPaused = true; stopPlaying(); }
   else { userPaused = false; startPlaying(); }
 });
-
 clearBtn.addEventListener("click", clearAll);
-
 document.querySelectorAll("[data-bpm]").forEach((btn) => {
   btn.addEventListener("click", () => {
     transport.bpm = Math.max(60, Math.min(180, transport.bpm + parseInt(btn.dataset.bpm, 10)));
-    bpmVal.textContent = transport.bpm;
+    bpmVal.textContent = transport.bpm; updateDelayTime();
   });
 });
-
 document.querySelectorAll("[data-beats]").forEach((btn) => {
   btn.addEventListener("click", () => {
     transport.beats = parseInt(btn.dataset.beats, 10);
     document.querySelectorAll("[data-beats]").forEach((b) => b.classList.toggle("sel", b === btn));
-    currentSub = currentSub % totalSubs();
-    buildSeqBar();
+    currentSub = currentSub % totalSubs(); buildSeqBar();
   });
 });
 
-/* ---------------- Init ---------------- */
+let hintHidden = false;
+function hideHint() { if (!hintHidden) { hintHidden = true; hint3d.classList.add("hide"); } }
+
+/* ---- init ---- */
 bpmVal.textContent = transport.bpm;
 buildSeqBar();
+initThree();
 goTo(0);
+
+/* hook de test */
+window.__sz = {
+  toggle: (i) => togglePad(current, i),
+  goTo, active: () => active.size, panel: () => current,
+  setKnob: (id, v) => { knobVals[id] = v; applyKnob(id); },
+};
