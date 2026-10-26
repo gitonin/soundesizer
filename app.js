@@ -342,12 +342,29 @@ function startDrone(freqs) {
   };
 }
 
+let speechPrimed = false;
+// Débloque la synthèse vocale : doit être appelé depuis un vrai geste utilisateur
+function primeSpeech() {
+  if (speechPrimed || !("speechSynthesis" in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    window.speechSynthesis.resume();
+    window.speechSynthesis.speak(u);
+    speechPrimed = true;
+  } catch (e) {}
+}
+
 function speakWord(word) {
   if (!("speechSynthesis" in window)) return;
   try {
+    const s = window.speechSynthesis;
+    // évite l'empilement des mots d'un tour sur l'autre
+    if (s.speaking || s.pending) s.cancel();
+    s.resume();
     const u = new SpeechSynthesisUtterance(word);
     u.rate = 1.05; u.pitch = 1; u.volume = 1;
-    window.speechSynthesis.speak(u);
+    s.speak(u);
   } catch (e) {}
 }
 
@@ -544,6 +561,7 @@ function togglePad(pi, i, cell, e) {
   const key = `${pi}:${i}`;
   const pad = PANELS[pi].pads[i];
   getCtx();
+  primeSpeech();
 
   if (active.has(key)) {
     active.delete(key);
@@ -555,6 +573,7 @@ function togglePad(pi, i, cell, e) {
     rippleAt(cell, e);
     if (!playing) startPlaying();                    // (re)démarre le transport, remet les nappes
     else if (pad.kind === "drone" && !drones.has(key)) drones.set(key, startDrone(pad.freqs));
+    if (pad.kind === "voice") speakWord(pad.word);    // feedback immédiat (geste direct)
     flashPad(key);
   }
   updateDotActivity();
@@ -649,6 +668,7 @@ let startX = 0, startY = 0, dragging = false, locked = null;
 viewport.addEventListener("pointerdown", (e) => {
   dragging = true; locked = null; suppressTap = false;
   startX = e.clientX; startY = e.clientY;
+  primeSpeech();
   setTransform(-current * viewport.clientWidth, false);
 });
 viewport.addEventListener("pointermove", (e) => {
@@ -688,6 +708,7 @@ window.addEventListener("keydown", (e) => {
    ============================================================ */
 playBtn.addEventListener("click", () => {
   getCtx();
+  primeSpeech();
   if (playing) { userPaused = true; stopPlaying(); }
   else { userPaused = false; startPlaying(); }
 });
